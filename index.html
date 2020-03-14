@@ -1,0 +1,418 @@
+<html>
+	<head>
+		
+		<style type="text/css">
+		body {
+			font-family: Helvetica, sans-serif;
+		}
+		
+		.board {
+			display: block;
+			background: #ccc;
+			margin-bottom: 20px;
+			
+			opacity: 0.25;
+		}
+		body.started .board {
+			opacity: 1;
+		}
+		.info {
+			float: left;
+			padding: 0 20px;
+			font-size: 14px;
+		}
+			.info .player {
+				position: relative;
+				padding: 5px;
+				text-shadow: 0 1px 1px rgba(255,255,255,0.3);
+				box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+				background: #eee;
+				width: 100px;
+				border: 1px solid rgba(0,0,0,0.1);
+				border-radius: 2px;
+			}
+			.info .player.active:before {
+				content: "";
+				position: absolute;
+				top: 50%;
+				margin-top: -7px;
+				right: -14px;
+				border-right: 7px solid black;
+				border-top: 7px solid transparent;
+				border-bottom: 7px solid transparent;
+			}
+		
+		h2 {
+			padding: 0;
+			margin: 0;
+			font-size: 20px;
+			font-weight: 400;
+			border-bottom: 1px solid #333;
+		}
+		
+		#start {
+			width: 100%;
+			padding: 10px;
+			background: #333;
+			font-family: inherit;
+			font-size: 18px;
+			color: white;
+			border: none;
+			box-shadow: 0 0 5px rgba(0,0,0,0.5);
+			cursor: pointer;
+			letter-spacing: 1px;
+			text-shadow: 0 1px 3px rgba(0,0,0,1);
+			border-bottom: 3px solid black;
+			border-radius: 3px;
+			
+			transition: all 0.5s;
+			outline: none;
+		}
+		#start:hover {
+			background: #444;
+		}
+		#start:active,
+		#start.active {
+			margin-top: 3px;
+			border-bottom-width: 0;
+		}
+		
+		.column {
+			float: left;
+		}
+		
+		.tile {
+			display: block;
+			width: 70px;
+			height: 70px;
+			background: white;
+			
+			margin: -4px -2px;
+			color: #ccc;
+			font-size: 10px;
+			
+			text-align: center;
+			line-height: 70px;
+			
+			position: relative;
+			z-index: 1;
+		}
+			.tile:hover {
+				z-index: 2;
+			}
+			.tile .border {
+				position: absolute;
+				background: #ccc;
+			}
+			.tile .border:hover {
+				background: #666;
+				cursor: pointer;
+			}
+			.tile .border.clicked {
+				background: black;
+			}
+			.tile .border-left {
+				left: 0;
+				top: 0;
+				bottom: 0;
+				width: 4px;
+			}
+			.tile .border-left:before {
+				position: absolute;
+				content: "";
+				width: 35px;
+				top: 25%;
+				height: 50%;
+				right: -35px;
+			}
+			.tile .border-right {
+				right: 0;
+				top: 0;
+				bottom: 0;
+				width: 4px;
+			}
+			.tile .border-right:before {
+				position: absolute;
+				content: "";
+				width: 35px;
+				top: 25%;
+				height: 50%;
+				left: -35px;
+			}
+			.tile .border-top {
+				left: 0;
+				top: 0;
+				right: 0;
+				height: 4px;
+			}
+			.tile .border-top:before {
+				position: absolute;
+				content: "";
+				height: 35px;
+				width: 50%;
+				left: 25%;
+				bottom: -35px;
+			}
+			.tile .border-bottom {
+				left: 0;
+				bottom: 0;
+				right: 0;
+				height: 4px;
+			}
+			.tile .border-bottom:before {
+				position: absolute;
+				content: "";
+				height: 35px;
+				width: 50%;
+				left: 25%;
+				top: -35px;
+			}
+		</style>
+		
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.js"></script>
+		<script type="text/javascript">
+		var app = angular.module('kv', []);
+
+		app.controller("kvCtrl", function($scope, $rootScope) {
+			
+			$scope.started = false;
+			
+			$scope.size = 7;
+			
+			$scope.$watch('size', function(){
+				$scope.drawBoard();
+			});
+			
+			$scope.board = [];
+			
+			$scope.players = [{
+				name: 'Emile',
+				color: '#C1ff00',
+				score: 0
+			},
+			{
+				name: 'Mark',
+				color: '#00c1ff',
+				score: 0
+			}];
+			$scope.activePlayer = 0;
+			
+			$scope.newPlayerName = '';
+			$scope.addPlayer = function() {
+				
+				if( $scope.newPlayerName.length < 1 ) return alert("Enter a name!");
+				
+				var r = 100 + Math.round( Math.random() * 155 );
+				var g = 100 + Math.round( Math.random() * 155 );
+				var b = 100 + Math.round( Math.random() * 155 );
+				
+				$scope.players.push({
+					name: $scope.newPlayerName,
+					color: 'rgb(' + r + ',' + g + ',' + b + ')',
+					score: 0
+				});
+				
+				$scope.newPlayerName = '';
+			}
+			
+			$scope.start = function(){
+				$scope.started = true;
+			}
+			
+			$scope.drawBoard = function(){
+				
+				$scope.board = [];
+					
+				// generate board
+				for( var y = 0; y < $scope.size; y++ ) {
+					for( var x = 0; x < $scope.size; x++ ) {
+						
+						$scope.board[y] = $scope.board[y] || [];
+						
+						$scope.board[y][x] = {
+							left: false,
+							top: false,
+							bottom: false,
+							right: false,
+							x: x,
+							y: y,
+							closedBy: false
+						};
+					}
+				}
+			}
+			
+			$scope.click = function( tile, side ) {
+				
+				if( !$scope.started ) return;
+								
+				if( tile[ side ] ) return; // prevent double clicks
+				
+				tile[ side ] = true;
+				
+				// check if closed
+				var closed = $scope.checkClosed( tile );
+				var closedAlt = false;
+				
+				// get tile to the left
+				if( side == 'left' ) {
+					try {
+						$scope.board[ tile.y - 1 ][ tile.x ].right = true;
+						var closedAlt = $scope.checkClosed( $scope.board[ tile.y - 1 ][ tile.x ] )
+					} catch(e){}
+				}
+				
+				// get tile to the right
+				if( side == 'right' ) {
+					try {
+						$scope.board[ tile.y + 1 ][ tile.x ].left = true;
+						var closedAlt = $scope.checkClosed( $scope.board[ tile.y + 1 ][ tile.x ] )
+					} catch(e){}
+				}
+				
+				// get tile above
+				if( side == 'top' ) {
+					try {
+						$scope.board[ tile.y ][ tile.x - 1 ].bottom = true;
+						var closedAlt = $scope.checkClosed( $scope.board[ tile.y ][ tile.x - 1 ]  )
+					} catch(e){}
+				}
+				
+				// get tile below
+				if( side == 'bottom' ) {
+					try {
+						$scope.board[ tile.y ][ tile.x + 1 ].top = true;
+						var closedAlt = $scope.checkClosed( $scope.board[ tile.y ][ tile.x + 1 ] )
+					} catch(e){}
+				}
+				
+				// next player			
+				if( !closed && !closedAlt ) {
+					$scope.activePlayer++;
+					
+					if( $scope.activePlayer == $scope.players.length  ) {
+						$scope.activePlayer = 0;
+					}
+				}
+			}
+			
+			$scope.checkClosed = function( tile ) {
+				if( tile.left && tile.right && tile.top && tile.bottom ) {
+					var activePlayer = $scope.players[ $scope.activePlayer ];
+					tile.closedBy = activePlayer;
+					activePlayer.score++;
+					return true;
+				}				
+				return false;
+			}
+			
+		});		
+		
+		/*
+		This directive allows us to pass a function in on an enter key to do what we want.
+		 */
+		app.directive('ngEnter', function () {
+		    return function (scope, element, attrs) {
+		        element.bind("keydown keypress", function (event) {
+		            if(event.which === 13) {
+		                scope.$apply(function (){
+		                    scope.$eval(attrs.ngEnter);
+		                });
+		 
+		                event.preventDefault();
+		            }
+		        });
+		    };
+		});
+
+		</script>
+		
+	</head>
+	<body
+		ng-app="kv"
+		ng-controller="kvCtrl as kv"
+		ng-class="{ 'started': started }"
+	>
+		
+		<div class="info">			
+			<h2>Score</h2>
+			
+			<p
+				ng-repeat="player in players"
+				style="background-color: {{player.color}};"
+				ng-class="{'active' : activePlayer == $index }"
+				class="player"
+			>
+				name: {{player.name}} <br />
+				score: {{player.score}}</p>
+			</p>
+			
+			<p
+				class="player"
+				ng-show="!started"
+			>
+				<input ng-model="newPlayerName" style="width: 100px;" placeholder="name" ng-enter="addPlayer()" />
+				<br />
+				<button ng-click="addPlayer()" style="width: 100%; margin-top:5px;">Add player</button>
+			</p>
+			
+			<div
+				ng-show="!started"
+			>
+				<h2>Settings</h2>
+				
+				<p>Board size: <br />
+					<input type="range" ng-model="size" step="1" min="2" max="20" />
+				</p>
+			</div>
+			
+			<br />			
+			<p>
+				<button
+					id="start"
+					ng-show="!started"
+					ng-click="start()"
+				>Start!</button>
+			</p>
+			
+		</div>
+		
+		<div class="board">
+			
+			<div class="column" ng-repeat="column in board">
+				<div
+					class="tile"
+					ng-repeat="tile in column"
+					ng-class="{ 'closed': tile.left && tile.right && tile.top && tile.bottom }"
+					style="background-color: {{tile.closedBy.color}};"
+				>
+					
+					<div
+						class="border border-left"
+						ng-class="{ 'clicked': tile.left }"
+						ng-click="click(tile, 'left')"
+					></div>
+					<div
+						class="border border-right"
+						ng-class="{ 'clicked': tile.right }"
+						ng-click="click(tile, 'right')"
+					></div>
+					<div
+						class="border border-top"
+						ng-class="{ 'clicked': tile.top }"
+						ng-click="click(tile, 'top')"
+					></div>
+					<div
+						class="border border-bottom"
+						ng-class="{ 'clicked': tile.bottom }"
+						ng-click="click(tile, 'bottom')"
+					></div>
+					
+					col {{tile.y}} row {{tile.x}}
+				</div>
+			</div>			
+			
+		</div>
+		
+	</body>
+</html>
